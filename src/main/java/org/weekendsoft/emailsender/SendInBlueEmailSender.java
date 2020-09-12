@@ -3,15 +3,21 @@
  */
 package org.weekendsoft.emailsender;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.log4j.Logger;
 import org.weekendsoft.configmanager.ConfigManager;
 
-import okhttp3.Call;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
+import sendinblue.ApiClient;
+import sendinblue.ApiException;
+import sendinblue.Configuration;
+import sendinblue.auth.ApiKeyAuth;
+import sibApi.SmtpApi;
+import sibModel.CreateSmtpEmail;
+import sibModel.SendSmtpEmail;
+import sibModel.SendSmtpEmailSender;
+import sibModel.SendSmtpEmailTo;
 
 /**
  * @author Vivek Kant
@@ -64,61 +70,55 @@ public class SendInBlueEmailSender implements EmailSender {
 
 	@Override
 	public void sendPlainTextEmail(String from, String to, String subject, String body) throws Exception {
-		this.sendEmail(from, to, subject, body, false);
+		this.sendEmailSDK(from, to, subject, body, false);
 	}
 
 	@Override
 	public void sendHTMLEmail(String from, String to, String subject, String body) throws Exception {
-		this.sendEmail(from, to, subject, body, true);
+		this.sendEmailSDK(from, to, subject, body, true);
 
 	}
 	
-	public void sendEmail(String from, String to, String subject, String body, boolean html) throws Exception {
+	public void sendEmailSDK(String from, String to, String subject, String body, boolean html) throws Exception {
 		
 		LOG.debug("Sending email with the details, TO:" + to + " from:" + from + " subject:" + subject);
 		LOG.debug("Body: " + body);
 		
-		OkHttpClient client = new OkHttpClient.Builder().build();
-		String json = createRequestJSON(from, to, subject, body, html);
-		RequestBody reqBody = RequestBody.create(MediaType.parse("application/json; charset=utf-8"), json);
+		ApiClient defaultClient = Configuration.getDefaultApiClient();
+        
+		ApiKeyAuth apiKey = (ApiKeyAuth) defaultClient.getAuthentication("api-key");
+        apiKey.setApiKey(key);
+        
+        ApiKeyAuth partnerKey = (ApiKeyAuth) defaultClient.getAuthentication("partner-key");
+        partnerKey.setApiKey(key);
+        
+        SmtpApi apiInstance = new SmtpApi();
+        SendSmtpEmail sendSmtpEmail = new SendSmtpEmail();
+        
+        SendSmtpEmailSender sender = new SendSmtpEmailSender();
+        sender.setName(from);
+        sender.setEmail(from);
+        
+        SendSmtpEmailTo sendTo = new SendSmtpEmailTo();
+        sendTo.setName(to);
+        sendTo.setEmail(to);
+        List<SendSmtpEmailTo> toList = new ArrayList<SendSmtpEmailTo>();
+        toList.add(sendTo);
+        
+        sendSmtpEmail.sender(sender);
+        sendSmtpEmail.to(toList);
+        sendSmtpEmail.subject(subject);
+        sendSmtpEmail.textContent(body);
+        
+        try {
+            CreateSmtpEmail result = apiInstance.sendTransacEmail(sendSmtpEmail);
+			LOG.debug("Response message id: " + result.getMessageId());
+        } 
+        catch (ApiException e) {
+        	LOG.error("Got exception while sending email", e);
+			throw new Exception("Sending email failed", e);
+        }
 
-		LOG.debug("Request body: " + json);
-		
-		Request request = new Request.Builder()
-							.url(url)
-							.addHeader("Accept", "application/json")
-							.addHeader("api-key", key)
-							.post(reqBody)
-							.build();
-		
-		Call call = client.newCall(request);
-		Response response = call.execute();
-		
-		if (!response.isSuccessful()) {
-			LOG.error("Response code: " + response.code());
-			LOG.error("Response message: " + response.body().string());
-			throw new Exception("Sending email failed : ");
-		}
-		else {
-			
-		}
-		LOG.debug("Response code: " + response.code());
-		LOG.debug("Response message: " + response.body().string());
 	}
-	
-	private String createRequestJSON(String from, String to, String subject, String body, boolean html) {
-		
-		String json = "{\"sender\": {\"name\": \"" + from
-				+ "\",\"email\": \"" + from
-				+ "\"},\"to\": [{\"email\": \"" + to
-				+ "\"}],\"" + (html?"html":"text")
-				+ "Content\": \"" + body
-				+ "\",\"subject\": \"" + subject
-				+ "\"}";
-		
-		return json;
-	}
-	
-	
 
 }
