@@ -15,7 +15,7 @@ class SendGridEmailSenderTest {
 		String subject = "Test Email";
 		String body = "It is fun to send emails";
 		
-		es.sendPlainHTMLEmail(from, to, subject, body);
+		es.sendHTMLEmail(from, to, subject, body);
 		
 	}
 
