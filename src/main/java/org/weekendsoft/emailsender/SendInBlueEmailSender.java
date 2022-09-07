@@ -108,7 +108,14 @@ public class SendInBlueEmailSender implements EmailSender {
         sendSmtpEmail.sender(sender);
         sendSmtpEmail.to(toList);
         sendSmtpEmail.subject(subject);
-        sendSmtpEmail.textContent(body);
+        
+        if (html) {
+            sendSmtpEmail.htmlContent(body);
+        } else {
+            sendSmtpEmail.textContent(body);
+        }
+        
+        
         
         try {
             CreateSmtpEmail result = apiInstance.sendTransacEmail(sendSmtpEmail);
